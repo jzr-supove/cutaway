@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      # yt-dlp and ffmpeg are never bundled, so CI installs them the same way a
+      # user would. This also catches a doctor script that has drifted from the
+      # flags the server actually passes.
+      - name: Install external tools
+        run: |
+          sudo apt-get update && sudo apt-get install -y ffmpeg
+          sudo curl -fsSL -o /usr/local/bin/yt-dlp \
+            https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp
+          sudo chmod +x /usr/local/bin/yt-dlp
+
+      - name: Doctor
+        run: npm run doctor
