@@ -23,7 +23,19 @@ export interface Progress {
  */
 const END_OF_OPTIONS = '--'
 
-const COMMON_ARGS = ['--no-playlist', '--no-warnings', '--ignore-config']
+const COMMON_ARGS = [
+  '--no-playlist',
+  '--no-warnings',
+  '--ignore-config',
+  // Instagram's web API answers /media/<id>/info/ with an empty body, and the
+  // extractor re-raises the resulting JSON parse error instead of falling back
+  // to its logged-out path — so a reel fails outright, and fails *harder* with
+  // cookies enabled, because being logged in is what selects that path.
+  // app_id=ios routes to i.instagram.com, which answers normally either way.
+  // extractor-args are namespaced, so no other site sees this.
+  '--extractor-args',
+  'instagram:app_id=ios',
+]
 
 export async function resolveMeta(url: string, opts: { cookiesFromBrowser?: string | null } = {}): Promise<VideoMeta> {
   const args = [
@@ -242,6 +254,10 @@ function translateYtdlpError(err: unknown): Error {
     [
       /unsupported url|no video formats found|unable to extract/i,
       'yt-dlp could not find a video at that link. It may be unsupported, or yt-dlp may need updating (run: yt-dlp -U).',
+    ],
+    [
+      /failed to parse json|expecting value/i,
+      'The site returned an unreadable response, which usually means its extractor has broken. Updating yt-dlp normally fixes it: yt-dlp -U',
     ],
     [
       /could not copy .*cookie database|permission denied.*cookies|unable to (?:open|read) cookie/i,
